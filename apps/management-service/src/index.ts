@@ -148,6 +148,6 @@ app.register((inst, _, done) => {
 }, { prefix: process.env.BASE_PATH || '/management' })
 
 ensureComposeFileExists().then(async () => {
-  await app.listen({ port })
+  await app.listen({ port, host: '0.0.0.0' })
   console.log(`Management service running on port ${port}`)
 })
