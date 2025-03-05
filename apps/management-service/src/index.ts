@@ -76,8 +76,7 @@ app.register((inst, _, done) => {
       labels: [
         'traefik.enable=true',
         `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)`,
-        `traefik.http.routers.${name}.entrypoints=websecure`,
-        `traefik.http.routers.${name}.tls.certresolver=awsresolver`,
+        `traefik.http.routers.${name}.entrypoints=web`,
         `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
       ],
     }
