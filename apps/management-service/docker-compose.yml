@@ -32,4 +32,5 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.management.rule=PathPrefix(`/management/`)"
+      - "traefik.http.services.management.loadbalancer.server.port=3000"
       # - "traefik.http.routers.management.entrypoints=websecure"
