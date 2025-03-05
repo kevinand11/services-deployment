@@ -31,5 +31,5 @@ services:
       - BASE_PATH=management
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.management.rule=PathPrefix(/management/)"
+      - "traefik.http.routers.management.rule=PathPrefix(`/management/`)"
       # - "traefik.http.routers.management.entrypoints=websecure"
