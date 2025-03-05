@@ -91,7 +91,6 @@ app.register((inst, _, done) => {
       throw createError('ERROR_CODE', 'Service not found or cannot be modified', 400)
     }
 
-
     if (config.image) {
       service.image = config.image
     }
