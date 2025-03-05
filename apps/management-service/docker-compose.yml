@@ -40,4 +40,3 @@ services:
       - "traefik.http.routers.management.rule=PathPrefix(`/management/`)"
       - "traefik.http.routers.management.entrypoints=web"
       - "traefik.http.services.management.loadbalancer.server.port=3000"
-      - "traefik.http.services.management.loadbalancer.server.host=http://management"
