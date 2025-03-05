@@ -12,7 +12,7 @@ services:
       - '--entrypoints.web.address=:80'
       - '--entrypoints.websecure.address=:443'
     ports:
-      - '80:80'
+      - '82:80'
       - '443:443'
     networks:
       - traefik-net
@@ -38,6 +38,8 @@ services:
     restart: always
     volumes:
       - /tmp/management-service/docker-compose.yml:/./docker-compose.yml
+    ports:
+      - '80:3000'
     networks:
       - traefik-net
     environment:
