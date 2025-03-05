@@ -17,6 +17,7 @@ services:
     restart: unless-stopped
 
   management:
+    container_name: management
     build:
       context: .
     restart: always
@@ -29,4 +30,5 @@ services:
       - PORT=3000
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.management.entrypoints=websecure"
+      - "traefik.http.routers.management.rule=PathPrefix(/)"
+      # - "traefik.http.routers.management.entrypoints=websecure"
