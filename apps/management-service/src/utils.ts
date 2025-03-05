@@ -7,7 +7,7 @@ import { existsSync } from 'fs'
 
 const execAsync = promisify(exec)
 
-const COMPOSE_FILE = path.join(process.cwd(), 'docker-compose.yml')
+const COMPOSE_FILE = path.join('/tmp/management-service', 'docker-compose.yml')
 
 export const loadComposeFile = async () => {
   const content = await fs.readFile(COMPOSE_FILE, 'utf8')
@@ -28,7 +28,16 @@ export const restartServices = async(name?: string) => {
 }
 
 export const ensureComposeFileExists = async () => {
-  if (!existsSync(COMPOSE_FILE)) {
+  await fs.mkdir(path.dirname(COMPOSE_FILE), { recursive: true })
+
+  if (existsSync(COMPOSE_FILE)) {
+    return
+  }
+
+  const clone = path.join(process.cwd(), 'docker-compose.yml')
+  if (!existsSync(clone)) {
     throw new Error('docker-compose.yml is needed')
   }
+
+  await fs.copyFile(clone, COMPOSE_FILE, fs.constants.COPYFILE_EXCL)
 }

@@ -3,15 +3,16 @@
 	"version": "1.0.0",
 	"scripts": {
 		"build:deps": "pnpm exec tsc --noEmit",
-		"build": "pnpm build:deps && tsup",
-		"dev": "pnpm build:deps && tsx watch src/index.ts"
+		"start": "pnpm build:deps && tsx src/index.ts",
+		"dev": "pnpm build:deps && tsx watch src/index.ts",
+		"pm2": "pm2"
 	},
 	"private": true,
 	"license": "UNLICENSED",
 	"devDependencies": {
 		"@types/js-yaml": "^4.0.9",
 		"@types/node": "^22.13.9",
-		"tsup": "^6.2.1",
+		"pm2": "^5.4.3",
 		"tsx": "^4.7.1",
 		"typescript": "^5.5.3"
 	},

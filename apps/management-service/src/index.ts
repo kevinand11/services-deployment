@@ -9,8 +9,6 @@ app.setErrorHandler((err, _, reply) => {
   reply.status(err.statusCode || 500).send({ error: err.message, code: err.code, details: err.stack })
 })
 
-const port = Number(process.env.PORT) || 3000
-
 app.register((inst, _, done) => {
   inst.get(`/services`, async (req, res) => {
     const composeData = await loadComposeFile()
@@ -152,6 +150,7 @@ app.register((inst, _, done) => {
   done()
 }, { prefix: process.env.BASE_PATH || '/management' })
 
+const port = Number(process.env.PORT) || 3000
 ensureComposeFileExists().then(async () => {
   await app.listen({ port, host: '0.0.0.0' })
   console.log(`Management service running on port: ${port}`)
