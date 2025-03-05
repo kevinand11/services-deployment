@@ -17,7 +17,7 @@ export default defineConfig(async () => {
     dts: true,
     external: Object.keys(dependencies),
     async onSuccess() {
-      await copyFile(`package`, `dist/package.json`);
+      await copyFile(`package.json`, `dist/package.json`);
       await copyFile(`Dockerfile`, `dist/Dockerfile`);
       await copyFile(`docker-compose.yml`, `dist/docker-compose.yml`);
     },

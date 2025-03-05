@@ -6,12 +6,6 @@ settings:
 
 importers:
 
-  .:
-    dependencies:
-      zx:
-        specifier: ^8.4.0
-        version: 8.4.0
-
   apps/management-service:
     dependencies:
       '@fastify/error':
@@ -1087,11 +1081,6 @@ packages:
     resolution: {integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==}
     engines: {node: '>=6'}
 
-  zx@8.4.0:
-    resolution: {integrity: sha512-b5+gbUT0akQ5vVuBuHgp0viQx2ZYCuooVD41Z7g47sN0diLsAvB2XteHcp5lec90CNEQ9o7TkXsE3ksaJrZHGw==}
-    engines: {node: '>= 12.17.0'}
-    hasBin: true
-
 snapshots:
 
   '@aws-cdk/asset-awscli-v1@2.2.226': {}
@@ -1969,5 +1958,3 @@ snapshots:
   yaml@1.10.2: {}
 
   yn@3.1.1: {}
-
-  zx@8.4.0: {}
