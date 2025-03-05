@@ -10,3 +10,5 @@ cdk.out
 dist
 
 .DS_STORE
+
+*.pem

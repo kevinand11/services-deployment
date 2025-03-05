@@ -1,23 +1,20 @@
 import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
 /* import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets'; */
 
 interface ServicesStackProps extends cdk.StackProps {
-  managementServiceRepositoryName: string;
+  githubRepoUrl: string;
+  githubRepoBranch?: string;
   // domainName: string;
   sshKeyName: string;
 }
 
 export class ServicesStack extends cdk.Stack {
-  managementServiceRepo: ecr.IRepository
   constructor(scope: Construct, id: string, public props: ServicesStackProps) {
     super(scope, id, props);
-
-    this.managementServiceRepo = ecr.Repository.fromRepositoryName(this, 'ManagementServiceRepository', this.props.managementServiceRepositoryName)
 
     const { instance } = this.createInstance()
 
@@ -69,69 +66,46 @@ export class ServicesStack extends cdk.Stack {
 
     const userData = ec2.UserData.forLinux();
     userData.addCommands(
-      // System Update
-      'dnf update -y',
-      'dnf install -y docker docker-compose-plugin git',
-
-      // Configure AWS CLI and ECR login
-      'dnf install -y awscli',
-      'aws configure set region $(curl -s http://169.254.169.254/latest/meta-data/placement/region)',
-
-      // Enable Docker
-      'systemctl enable docker',
-      'systemctl start docker',
-
-      // Create Services Directory
-      'mkdir -p /opt/services/management',
-      'mkdir -p /opt/services/configs',
-      'mkdir -p /opt/services/scripts',
-
-      // Create Pull and Restart Script
-      'cat > /opt/services/scripts/pull-and-restart-management-service.sh << EOL',
       '#!/bin/bash',
       'set -e',
 
-      // Authenticate Docker to ECR
-      'aws ecr get-login-password --region $(aws configure get region) | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$(aws configure get region).amazonaws.com',
+      'dnf update -y',
 
-      // Stop existing service
-      'systemctl stop services-management || true',
+      'dnf install -y docker docker-compose-plugin git nodejs npm',
 
-      // Pull latest image
-      `docker pull ${this.managementServiceRepo.repositoryUri}:latest`,
+      'systemctl enable docker',
+      'systemctl start docker',
 
-      // Remove existing container if exists
-      'docker rm -f management-service || true',
+      'mkdir -p /opt/services/management',
+      'cd /opt/services/management',
 
-      // Run new container
-      `docker run -d --name management-service \\
-        -p 3000:3000 \\
-        -v /opt/services/configs:/opt/services/configs \\
-        ${this.managementServiceRepo.repositoryUri}:latest`,
+      `git clone ${this.props.githubRepoUrl} .`,
+      `git checkout ${this.props.githubRepoBranch || 'main'}`,
 
-      // Create systemd service for management
-      'cat > /etc/systemd/system/services-management.service << INNEREOF',
+      'npm i -g pnpm',
+      'pnpm i',
+      'pnpm --filter ./apps/management-service build',
+
+      'cat > /etc/systemd/system/services-management.service << EOL',
       '[Unit]',
       'Description=Services Management Service',
       'After=docker.service',
       'Requires=docker.service',
+      '',
       '[Service]',
       'Type=simple',
-      'ExecStart=/usr/bin/docker start -a management-service',
-      'ExecStop=/usr/bin/docker stop management-service',
+      'WorkingDirectory=/opt/services/management/apps/management-service/dist',
+      'ExecStart=/usr/bin/node index.js',
       'Restart=always',
+      'User=ec2-user',
+      '',
       '[Install]',
       'WantedBy=multi-user.target',
-      'INNEREOF',
-
-      // Reload and Start Services
-      'systemctl daemon-reload',
-      'systemctl enable services-management',
-      'systemctl start services-management',
       'EOL',
 
-      // Make Scripts Executable
-      'chmod +x /opt/services/scripts/pull-and-restart-management-service.sh'
+      'systemctl daemon-reload',
+      'systemctl enable services-management',
+      'systemctl start services-management'
     );
 
     const instance = new ec2.Instance(this, 'ServiceInstance', {
