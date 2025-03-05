@@ -1,20 +1,20 @@
 version: '3.8'
 
 services:
-  traefik:
-    image: traefik:v2.10
-    container_name: traefik
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-    ports:
-      # - "80:80"
-      - "443:443"
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-    restart: unless-stopped
+  # traefik:
+  #   image: traefik:v2.10
+  #   container_name: traefik
+  #   command:
+  #     - "--providers.docker=true"
+  #     - "--providers.docker.exposedbydefault=true"
+  #     - "--entrypoints.web.address=:80"
+  #     - "--entrypoints.websecure.address=:443"
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - "/var/run/docker.sock:/var/run/docker.sock:ro"
+  #   restart: unless-stopped
 
   management:
     container_name: management
@@ -24,7 +24,7 @@ services:
     volumes:
       - "/tmp/management-service/docker-compose.yml:/./docker-compose.yml"
     ports:
-      - "80:3000"
+      - "3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -33,4 +33,4 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.management.rule=PathPrefix(`/management/`)"
       - "traefik.http.routers.management.entrypoints=web"
-      - "traefik.http.services.management.loadbalancer.server.port=3000"
+      - "traefik.http.services.management.loadbalancer.server.url=http://management:3000"
