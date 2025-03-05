@@ -1,19 +1,38 @@
 import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
 /* import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets'; */
 
 interface ServicesStackProps extends cdk.StackProps {
+  managementServiceRepositoryName: string;
   // domainName: string;
   sshKeyName: string;
 }
 
 export class ServicesStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: ServicesStackProps) {
+  managementServiceRepo: ecr.IRepository
+  constructor(scope: Construct, id: string, public props: ServicesStackProps) {
     super(scope, id, props);
 
+    this.managementServiceRepo = ecr.Repository.fromRepositoryName(this, 'ManagementServiceRepository', this.props.managementServiceRepositoryName)
+
+    const { instance } = this.createInstance()
+
+    new cdk.CfnOutput(this, 'ServiceInstanceId', {
+      value: instance.instanceId,
+      description: 'Instance ID of the services host'
+    });
+
+    new cdk.CfnOutput(this, 'ServicePublicIP', {
+      value: instance.instancePublicIp,
+      description: 'Public IP of the services host'
+    });
+  }
+
+  createInstance() {
     const vpc = ec2.Vpc.fromLookup(this, 'VPC', {
       isDefault: true
     });
@@ -52,7 +71,11 @@ export class ServicesStack extends cdk.Stack {
     userData.addCommands(
       // System Update
       'dnf update -y',
-      'dnf install -y docker docker-compose-plugin git nodejs npm',
+      'dnf install -y docker docker-compose-plugin git',
+
+      // Configure AWS CLI and ECR login
+      'dnf install -y awscli',
+      'aws configure set region $(curl -s http://169.254.169.254/latest/meta-data/placement/region)',
 
       // Enable Docker
       'systemctl enable docker',
@@ -63,47 +86,52 @@ export class ServicesStack extends cdk.Stack {
       'mkdir -p /opt/services/configs',
       'mkdir -p /opt/services/scripts',
 
-      // Clone Management Service
-      'git clone https://github.com/your-org/management-service.git /opt/services/management',
-
-      // Setup Management Service
-      'cd /opt/services/management',
-      'npm install',
-
-      // Create Restart Script
-      'cat > /opt/services/scripts/restart-management-service.sh << EOL',
+      // Create Pull and Restart Script
+      'cat > /opt/services/scripts/pull-and-restart-management-service.sh << EOL',
       '#!/bin/bash',
       'set -e',
+
+      // Authenticate Docker to ECR
+      'aws ecr get-login-password --region $(aws configure get region) | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$(aws configure get region).amazonaws.com',
+
+      // Stop existing service
       'systemctl stop services-management || true',
-      'cd /opt/services/management',
-      'git pull origin main',
-      'npm install',
-      'systemctl start services-management',
-      'EOL',
 
-      // Make Scripts Executable
-      'chmod +x /opt/services/scripts/restart-management-service.sh',
+      // Pull latest image
+      `docker pull ${this.managementServiceRepo.repositoryUri}:latest`,
 
-      // Create Systemd Service
-      'cat > /etc/systemd/system/services-management.service << EOL',
+      // Remove existing container if exists
+      'docker rm -f management-service || true',
+
+      // Run new container
+      `docker run -d --name management-service \\
+        -p 3000:3000 \\
+        -v /opt/services/configs:/opt/services/configs \\
+        ${this.managementServiceRepo.repositoryUri}:latest`,
+
+      // Create systemd service for management
+      'cat > /etc/systemd/system/services-management.service << INNEREOF',
       '[Unit]',
       'Description=Services Management Service',
       'After=docker.service',
       'Requires=docker.service',
       '[Service]',
       'Type=simple',
-      'WorkingDirectory=/opt/services/management',
-      'ExecStart=/usr/bin/node index.js',
+      'ExecStart=/usr/bin/docker start -a management-service',
+      'ExecStop=/usr/bin/docker stop management-service',
       'Restart=always',
-      'User=ec2-user',
       '[Install]',
       'WantedBy=multi-user.target',
-      'EOL',
+      'INNEREOF',
 
       // Reload and Start Services
       'systemctl daemon-reload',
       'systemctl enable services-management',
-      'systemctl start services-management'
+      'systemctl start services-management',
+      'EOL',
+
+      // Make Scripts Executable
+      'chmod +x /opt/services/scripts/pull-and-restart-management-service.sh'
     );
 
     const instance = new ec2.Instance(this, 'ServiceInstance', {
@@ -112,12 +140,12 @@ export class ServicesStack extends cdk.Stack {
       machineImage: ec2.MachineImage.latestAmazonLinux2023(),
       securityGroup: securityGroup,
       role: instanceRole,
-      keyName: props.sshKeyName,
+      keyName: this.props.sshKeyName,
       userData: userData
     });
 
     /* const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
-      domainName: props.domainName
+      domainName: this.props.domainName
     });
 
     new route53.ARecord(this, 'ServiceDNSRecord', {
@@ -126,14 +154,6 @@ export class ServicesStack extends cdk.Stack {
       target: route53.RecordTarget.fromIpAddresses(instance.instancePublicIp)
     }); */
 
-    new cdk.CfnOutput(this, 'ServiceInstanceId', {
-      value: instance.instanceId,
-      description: 'Instance ID of the services host'
-    });
-
-    new cdk.CfnOutput(this, 'ServicePublicIP', {
-      value: instance.instancePublicIp,
-      description: 'Public IP of the services host'
-    });
+    return { instance }
   }
 }
