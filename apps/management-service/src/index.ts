@@ -10,7 +10,7 @@ app.setErrorHandler((err, _, reply) => {
   reply.status(err.statusCode || 500).send({ error: err.message, code: err.code, details: err.stack })
 })
 
-app.addHook('onRequest', (req) => {
+app.addHook('onRequest', async (req) => {
   console.log(JSON.stringify({
     method: req.method,
     url: req.url,
