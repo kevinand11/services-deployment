@@ -39,7 +39,7 @@ services:
     volumes:
       - /tmp/management-service/docker-compose.yml:/./docker-compose.yml
     ports:
-      - '3000:80'
+      - '3000:3000'
     networks:
       - traefik-net
     environment:
