@@ -76,7 +76,7 @@ app.register((inst, _, done) => {
     }
 
     await saveComposeFile(composeData)
-    // await restartServices()
+    await restartServices()
 
     res.send({ name, composeData })
   })
@@ -137,6 +137,7 @@ app.register((inst, _, done) => {
   })
 
   inst.post(`/reload`, async (req, res) => {
+    await restartServices()
     res.send(true)
   })
 
@@ -145,5 +146,5 @@ app.register((inst, _, done) => {
 
 ensureComposeFileExists().then(async () => {
   await app.listen({ port, host: '0.0.0.0' })
-  console.log(`Management service running`, JSON.stringify(app.addresses, null, 2))
+  console.log(`Management service running on port: ${port}`)
 })
