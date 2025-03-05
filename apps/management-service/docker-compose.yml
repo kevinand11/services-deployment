@@ -15,3 +15,10 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     restart: unless-stopped
+
+  management:
+    build:
+      context: .
+    restart: always
+    volumes:
+      - "/tmp/management-service/docker-compose.yml:/./docker-compose.yml"

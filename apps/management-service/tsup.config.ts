@@ -1,13 +1,9 @@
 import { defineConfig } from 'tsup';
 import { copyFile } from 'fs/promises'
 
-import { createPackageJson, createDockerfile, getDependencies } from '../../devops/scripts';
-
-import { name, version } from './package.json';
+import { dependencies } from './package.json';
 
 export default defineConfig(async () => {
-  const { dependencies } = await getDependencies(name);
-
   return {
     entry: {
       index: 'src/index.ts',
@@ -21,8 +17,8 @@ export default defineConfig(async () => {
     dts: true,
     external: Object.keys(dependencies),
     async onSuccess() {
-      createPackageJson(`dist`, name, version, dependencies);
-      createDockerfile(`dist`);
+      await copyFile(`package`, `dist/package.json`);
+      await copyFile(`Dockerfile`, `dist/Dockerfile`);
       await copyFile(`docker-compose.yml`, `dist/docker-compose.yml`);
     },
   };

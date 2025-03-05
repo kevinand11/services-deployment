@@ -7,7 +7,7 @@ import { existsSync } from 'fs'
 
 const execAsync = promisify(exec)
 
-const APP_DIR = '/tmp/management-service'
+const APP_DIR = process.cwd()
 const COMPOSE_FILE = path.join(APP_DIR, 'docker-compose.yml')
 
 export const loadComposeFile = async () => {
@@ -28,11 +28,5 @@ export const ensureComposeFileExists = async () => {
   if (existsSync(COMPOSE_FILE)) {
     return
   }
-  const clonePath = path.join(process.cwd(), 'docker-compose.yml')
-
-  if (!existsSync(clonePath)) {
-    throw new Error('Copy of docker-compose.yml is needed')
-  }
-  await fs.mkdir(path.dirname(COMPOSE_FILE), { recursive: true })
-  await fs.copyFile(clonePath, COMPOSE_FILE)
+  throw new Error('docker-compose.yml is needed')
 }
