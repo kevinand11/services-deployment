@@ -10,7 +10,7 @@ services:
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
     ports:
-      - "80:80"
+      # - "80:80"
       - "443:443"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
@@ -24,7 +24,7 @@ services:
     volumes:
       - "/tmp/management-service/docker-compose.yml:/./docker-compose.yml"
     ports:
-      - "3000:3000"
+      - "80:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
