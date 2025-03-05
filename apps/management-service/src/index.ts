@@ -6,7 +6,17 @@ import { loadComposeFile, saveComposeFile, restartServices, ensureComposeFileExi
 const app = fastify()
 
 app.setErrorHandler((err, _, reply) => {
+  console.error(err)
   reply.status(err.statusCode || 500).send({ error: err.message, code: err.code, details: err.stack })
+})
+
+app.addHook('onRequest', (req) => {
+  console.log(JSON.stringify({
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    query: req.query
+  }, null, 2))
 })
 
 app.register((inst, _, done) => {
