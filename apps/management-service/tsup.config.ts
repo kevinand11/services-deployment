@@ -1,4 +1,5 @@
 import { defineConfig } from 'tsup';
+import { copyFile } from 'fs/promises'
 
 import { createPackageJson, createDockerfile, getDependencies } from '../../devops/scripts';
 
@@ -22,6 +23,7 @@ export default defineConfig(async () => {
     async onSuccess() {
       createPackageJson(`dist`, name, version, dependencies);
       createDockerfile(`dist`);
+      await copyFile(`docker-compose.yml`, `dist/docker-compose.yml`);
     },
   };
 });

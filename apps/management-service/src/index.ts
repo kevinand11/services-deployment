@@ -1,10 +1,8 @@
 import fastify from 'fastify'
 import { createError } from '@fastify/error'
-import * as fs from 'fs/promises'
-import * as path from 'path'
-import * as yaml from 'js-yaml'
-import { exec } from 'child_process'
-import { promisify } from 'util'
+import { existsSync } from 'fs'
+import { ServiceConfig } from './types'
+import { loadComposeFile, saveComposeFile, restartServices, ensureComposeFileExists } from './utils'
 
 const app = fastify()
 
@@ -12,33 +10,7 @@ app.setErrorHandler((err, _, reply) => {
   reply.status(err.statusCode || 500).send({ error: err.message, code: err.code, details: err.stack })
 })
 
-const execAsync = promisify(exec)
 const port = Number(process.env.PORT) || 3000
-
-const APP_DIR = '/app'
-const COMPOSE_FILE = path.join(APP_DIR, 'docker-compose.yml')
-
-interface ServiceConfig {
-  image: string
-  domain: string
-  port: number
-  path: string
-  env?: Record<string, string>
-}
-
-const loadComposeFile = async () => {
-  const content = await fs.readFile(COMPOSE_FILE, 'utf8')
-  return yaml.load(content) as any
-}
-
-const saveComposeFile = async (composeData: unknown) => {
-  const content = yaml.dump(composeData)
-  await fs.writeFile(COMPOSE_FILE, content, 'utf8')
-}
-
-const restartServices = async () => {
-  await execAsync(`cd ${APP_DIR} && docker-compose up -d`)
-}
 
 app.get(`/services`, async (req, res) => {
   const composeData = await loadComposeFile()
@@ -185,6 +157,7 @@ app.post(`/reload`, async (req, res) => {
   res.send(true)
 })
 
-app.listen({ port }, () => {
+ensureComposeFileExists().then(async () => {
+  await app.listen({ port })
   console.log(`Management service running on port ${port}`)
 })
