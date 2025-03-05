@@ -22,6 +22,19 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     restart: unless-stopped
 
+  test_server:
+    container_name: test_server
+    image: yeasy/simple-web
+    ports:
+      - "4000:80"
+    networks:
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.testy.rule=PathPrefix(`/testy/`)"
+      - "traefik.http.routers.testy.entrypoints=web"
+      - "traefik.http.services.testy.loadbalancer.server.port=80"
+
   management:
     container_name: management
     build:
