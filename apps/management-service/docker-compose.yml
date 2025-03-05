@@ -21,7 +21,7 @@ services:
       context: .
     restart: unless-stopped
     volumes:
-      - /tmp/management-service/docker-compose.yml:./docker-compose.yml
+      - /tmp/management-service/docker-compose.yml:/docker-compose.yml
     environment:
       - NODE_ENV=production
       - PORT=3000
