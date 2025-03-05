@@ -1,7 +1,5 @@
 version: '3.8'
-networks:
-  traefik-net:
-    external: false
+
 services:
   traefik:
     image: traefik:v2.10
@@ -14,18 +12,12 @@ services:
     ports:
       - '80:80'
       - '443:443'
-    networks:
-      - traefik-net
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
   test_server:
     container_name: test_server
     image: yeasy/simple-web
-    ports:
-      - '4000:80'
-    networks:
-      - traefik-net
     labels:
       - traefik.enable=true
       - traefik.http.routers.testy.rule=PathPrefix(`/`)
@@ -35,13 +27,9 @@ services:
     container_name: management
     build:
       context: .
-    restart: always
+    restart: unless-stopped
     volumes:
-      - /tmp/management-service/docker-compose.yml:/./docker-compose.yml
-    ports:
-      - '3000:3000'
-    networks:
-      - traefik-net
+      - /tmp/management-service/docker-compose.yml:./docker-compose.yml
     environment:
       - NODE_ENV=production
       - PORT=3000

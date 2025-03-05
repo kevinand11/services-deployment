@@ -72,7 +72,6 @@ app.register((inst, _, done) => {
         `traefik.http.routers.${name}.tls.certresolver=awsresolver`,
         `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
       ],
-      networks: ['traefik-net']
     }
 
     await saveComposeFile(composeData)
@@ -81,36 +80,46 @@ app.register((inst, _, done) => {
     res.send({ name, composeData })
   })
 
-  inst.put<{ Params: { name: string }; Body: ServiceConfig }>(`/services/:name`, async (req, res) => {
+  inst.put<{ Params: { name: string }; Body: Partial<ServiceConfig> }>(`/services/:name`, async (req, res) => {
     const { name } = req.params
     const config = req.body
 
     const composeData = await loadComposeFile()
+    const service = composeData.services[name]
 
-    if (!composeData.services[name] || name === 'traefik' || name === 'management') {
+    if (!service || name === 'traefik' || name === 'management') {
       throw createError('ERROR_CODE', 'Service not found or cannot be modified', 400)
     }
 
-    const service = composeData.services[name]
 
-    service.image = config.image
-    service.environment = {
-      ...service.environment,
-      ...config.env
+    if (config.image) {
+      service.image = config.image
+    }
+
+    if (config.env) {
+      service.environment = {
+        ...service.environment,
+        ...config.env
+      }
     }
 
     const labels = service.labels as string[]
-    const ruleIndex = labels.findIndex(l => l.includes('traefik.http.routers') && l.includes('.rule='))
 
-    if (ruleIndex !== -1) {
-      labels[ruleIndex] = `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)`
+    if (config.path) {
+      const ruleIndex = labels.findIndex(l => l.includes('traefik.http.routers') && l.includes('.rule='))
+
+      if (ruleIndex !== -1) {
+        labels[ruleIndex] = `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)`
+      }
     }
 
-    service.environment.PORT = config.port.toString()
-    const portIndex = labels.findIndex(l => l.includes('traefik.http.services') && l.includes('.loadbalancer.server.port='))
+    if (config.port) {
+      service.environment.PORT = config.port.toString()
+      const portIndex = labels.findIndex(l => l.includes('traefik.http.services') && l.includes('.loadbalancer.server.port='))
 
-    if (portIndex !== -1) {
-      labels[portIndex] = `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
+      if (portIndex !== -1) {
+        labels[portIndex] = `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
+      }
     }
 
     await saveComposeFile(composeData)
