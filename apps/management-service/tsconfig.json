@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "declaration": true,
+    "removeComments": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "target": "es2021",
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": false,
+    "moduleResolution": "node",
+    "jsx": "preserve",
+    "isolatedModules": true,
+    "importHelpers": true,
+    "esModuleInterop": true,
+    "allowJs": false,
+    "incremental": false,
+    "resolveJsonModule": true,
+    "emitDecoratorMetadata": false,
+    "baseUrl": "./",
+    "paths": {
+      "~/*": ["./src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}
