@@ -31,6 +31,7 @@ services:
       - traefik-net
     labels:
       - "traefik.enable=true"
+      - "traefik.http.routers.testy.rule=PathPrefix(`/`)"
       - "traefik.http.routers.testy.entrypoints=web"
       - "traefik.http.services.testy.loadbalancer.server.port=80"
 
