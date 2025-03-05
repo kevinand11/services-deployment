@@ -6,7 +6,8 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 REPO_NAME="management-service"
 
 # Build Docker image
-docker build -t $REPO_NAME .
+pnpm --filter ./apps/management-service dist
+docker build -t $REPO_NAME ./apps/management-service/dist
 
 # Authenticate Docker to ECR
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin "$ACCOUNT_ID".dkr.ecr.$REGION.amazonaws.com

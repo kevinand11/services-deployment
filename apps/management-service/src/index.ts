@@ -1,6 +1,5 @@
 import fastify from 'fastify'
 import { createError } from '@fastify/error'
-import { existsSync } from 'fs'
 import { ServiceConfig } from './types'
 import { loadComposeFile, saveComposeFile, restartServices, ensureComposeFileExists } from './utils'
 
@@ -47,16 +46,14 @@ app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, re
   const { name, ...config } = req.body
 
   if (!name || !config.image || !config.port || !config.path) {
-    throw createError('', 'Missing required fields', 400)
+    throw createError('ERROR_CODE', 'Missing required fields', 400)
   }
 
   const composeData = await loadComposeFile()
 
   if (composeData.services[name]) {
-    throw createError('', 'Service with this name already exists', 400)
+    throw createError('ERROR_CODE', 'Service with this name already exists', 400)
   }
-
-  const domain = config.domain
 
   composeData.services[name] = {
     image: config.image,
@@ -69,7 +66,7 @@ app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, re
     },
     labels: [
       'traefik.enable=true',
-      `traefik.http.routers.${name}.rule=Host(\`${domain}\`) && PathPrefix(\`${config.path}\`)`,
+      `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)${config.domain ? `&& Host(\`${config.domain}\`)` : ''}`,
       `traefik.http.routers.${name}.entrypoints=websecure`,
       `traefik.http.routers.${name}.tls.certresolver=awsresolver`,
       `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
@@ -78,56 +75,41 @@ app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, re
   }
 
   await saveComposeFile(composeData)
-  await restartServices()
+  // await restartServices()
 
-  res.send({ name, config })
+  res.send({ name, composeData })
 })
 
-app.put<{ Params: { name: string }; Body: Partial<ServiceConfig> }>(`/services/:name`, async (req, res) => {
+app.put<{ Params: { name: string }; Body: ServiceConfig }>(`/services/:name`, async (req, res) => {
   const { name } = req.params
   const config = req.body
 
   const composeData = await loadComposeFile()
 
   if (!composeData.services[name] || name === 'traefik' || name === 'management') {
-    throw createError('', 'Service not found or cannot be modified', 400)
+    throw createError('ERROR_CODE', 'Service not found or cannot be modified', 400)
   }
 
   const service = composeData.services[name]
 
-  if (config.image) {
-    service.image = config.image
+  service.image = config.image
+  service.environment = {
+    ...service.environment,
+    ...config.env
   }
 
-  if (config.env) {
-    service.environment = {
-      ...service.environment,
-      ...config.env
-    }
+  const labels = service.labels as string[]
+  const ruleIndex = labels.findIndex(l => l.includes('traefik.http.routers') && l.includes('.rule='))
+
+  if (ruleIndex !== -1) {
+    labels[ruleIndex] = `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)${config.domain ? `&& Host(\`${config.domain}\`)` : ''}`
   }
 
-  if (config.domain) {
-    service.domain = config.domain
-  }
+  service.environment.PORT = config.port.toString()
+  const portIndex = labels.findIndex(l => l.includes('traefik.http.services') && l.includes('.loadbalancer.server.port='))
 
-  if (config.path) {
-    const labels = service.labels as string[]
-    const ruleIndex = labels.findIndex(l => l.includes('traefik.http.routers') && l.includes('.rule='))
-
-    if (ruleIndex !== -1) {
-      labels[ruleIndex] = `traefik.http.routers.${name}.rule=Host(\`${service.domain}\`) && PathPrefix(\`${config.path}\`)`
-    }
-  }
-
-  if (config.port) {
-    service.environment.PORT = config.port.toString()
-
-    const labels = service.labels as string[]
-    const portIndex = labels.findIndex(l => l.includes('traefik.http.services') && l.includes('.loadbalancer.server.port='))
-
-    if (portIndex !== -1) {
-      labels[portIndex] = `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
-    }
+  if (portIndex !== -1) {
+    labels[portIndex] = `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
   }
 
   await saveComposeFile(composeData)
@@ -142,7 +124,7 @@ app.delete<{ Params: { name: string } }>(`/services/:name`, async (req, res) => 
   const composeData = await loadComposeFile()
 
   if (!composeData.services[name] || name === 'traefik' || name === 'management') {
-    throw createError('', 'Service not found or cannot be deleted', 400)
+    throw createError('ERROR_CODE', 'Service not found or cannot be deleted', 400)
   }
 
   delete composeData.services[name]

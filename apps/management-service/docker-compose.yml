@@ -14,16 +14,4 @@ services:
       - "443:443"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-    restart: always
-
-  # Example service template (you can replicate this for each service)
-  example-service:
-    image: your-example-service-image:latest
-    container_name: example-service
-    environment:
-      - NODE_ENV=production
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.example.entrypoints=websecure"
-      - "traefik.http.routers.example.tls.certresolver=letsencrypt"
-    restart: always
+    restart: unless-stopped
