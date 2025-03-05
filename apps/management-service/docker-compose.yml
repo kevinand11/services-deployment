@@ -29,8 +29,6 @@ services:
     restart: always
     volumes:
       - "/tmp/management-service/docker-compose.yml:/./docker-compose.yml"
-    ports:
-      - "3000:3000"
     networks:
       - traefik-net
     environment:
@@ -41,4 +39,4 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.management.rule=PathPrefix(`/management/`)"
       - "traefik.http.routers.management.entrypoints=web"
-      - "traefik.http.services.management.loadbalancer.server.port=3000"
+      - "traefik.http.services.management.loadbalancer.server.url=http://management:3000"
