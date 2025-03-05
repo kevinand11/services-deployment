@@ -22,3 +22,11 @@ services:
     restart: always
     volumes:
       - "/tmp/management-service/docker-compose.yml:/./docker-compose.yml"
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.management.entrypoints=websecure"
