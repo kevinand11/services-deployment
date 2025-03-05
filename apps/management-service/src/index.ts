@@ -9,10 +9,6 @@ app.setErrorHandler((err, _, reply) => {
   reply.status(err.statusCode || 500).send({ error: err.message, code: err.code, details: err.stack })
 })
 
-app.addHook('onRequest', (req) => {
-  console.log(req.url, req.method)
-})
-
 const port = Number(process.env.PORT) || 3000
 
 app.register((inst, _, done) => {
@@ -148,7 +144,6 @@ app.register((inst, _, done) => {
 }, { prefix: process.env.BASE_PATH || '/management' })
 
 ensureComposeFileExists().then(async () => {
-  app.listen({ port, host: '0.0.0.0' }, (a) => {
-    console.log(`Management service running`, JSON.stringify(app.addresses, null, 2))
-  })
+  await app.listen({ port, host: '0.0.0.0' })
+  console.log(`Management service running`, JSON.stringify(app.addresses, null, 2))
 })
