@@ -67,7 +67,7 @@ app.register((inst, _, done) => {
       },
       labels: [
         'traefik.enable=true',
-        `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)${config.domain ? ` && Host(\`${config.domain}\`)` : ''}`,
+        `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)`,
         `traefik.http.routers.${name}.entrypoints=websecure`,
         `traefik.http.routers.${name}.tls.certresolver=awsresolver`,
         `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
@@ -103,7 +103,7 @@ app.register((inst, _, done) => {
     const ruleIndex = labels.findIndex(l => l.includes('traefik.http.routers') && l.includes('.rule='))
 
     if (ruleIndex !== -1) {
-      labels[ruleIndex] = `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)${config.domain ? ` && Host(\`${config.domain}\`)` : ''}`
+      labels[ruleIndex] = `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)`
     }
 
     service.environment.PORT = config.port.toString()
