@@ -34,6 +34,12 @@ app.get(`/services`, async (req, res) => {
           '/' :
         '/'
 
+      const domain = pathRule ?
+        pathRule.match(/Host\(`([^`]+)`\)/) ?
+          pathRule.match(/Host\(`([^`]+)`\)/)[1] :
+          '/' :
+        '/'
+
       const portLabel = labels.find((l: string) => l.includes('traefik.http.services') && l.includes('.loadbalancer.server.port='))
       const port = portLabel ?
         parseInt(portLabel.split('=')[1]) :
@@ -43,7 +49,8 @@ app.get(`/services`, async (req, res) => {
         name,
         image: service.image,
         path,
-        port
+        domain,
+        port,
       }
     })
 
@@ -53,7 +60,7 @@ app.get(`/services`, async (req, res) => {
 app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, res) => {
   const { name, ...config } = req.body
 
-  if (!name || !config.image || !config.port || !config.path) {
+  if (!name || !config.image || !config.port || !config.domain) {
     throw createError('ERROR_CODE', 'Missing required fields', 400)
   }
 
@@ -74,9 +81,9 @@ app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, re
     },
     labels: [
       'traefik.enable=true',
-      `traefik.http.middlewares.${name}.stripprefix.prefixes=${config.path}`,
-      `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)`,
-      `traefik.http.routers.${name}.middlewares=${name}`,
+      //`traefik.http.middlewares.${name}.stripprefix.prefixes=${config.domain}`,
+      `traefik.http.routers.${name}.rule=Host(\`${config.domain}\`)`,
+      //`traefik.http.routers.${name}.middlewares=${name}`,
       `traefik.http.routers.${name}.entrypoints=web`,
       `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
     ],
@@ -112,17 +119,17 @@ app.put<{ Params: { name: string }; Body: Partial<ServiceConfig> }>(`/services/:
 
   const labels = service.labels as string[]
 
-  if (config.path) {
+  if (config.domain) {
     const ruleIndex = labels.findIndex(l => l.includes('traefik.http.routers') && l.includes('.rule='))
 
     if (ruleIndex !== -1) {
-      labels[ruleIndex] = `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)`
+      labels[ruleIndex] = `traefik.http.routers.${name}.rule=Host(\`${config.domain}\`)`
     }
 
-    const stripprefixIndex = labels.findIndex(l => l.includes('traefik.http.middlewares') && l.includes('.stripprefix'))
+    /* const stripprefixIndex = labels.findIndex(l => l.includes('traefik.http.middlewares') && l.includes('.stripprefix'))
     if (stripprefixIndex !== -1) {
       labels[stripprefixIndex] = `traefik.http.middlewares.${name}.stripprefix.prefixes=${config.path}`
-    }
+    } */
   }
 
   if (config.port) {

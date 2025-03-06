@@ -2,6 +2,6 @@
 export interface ServiceConfig {
   image: string
   port: number
-  path: string
+  domain: string
   env?: Record<string, string>
 }
