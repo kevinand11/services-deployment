@@ -4,7 +4,6 @@ import * as yaml from 'js-yaml'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import { existsSync } from 'fs'
-import { stdout } from 'process'
 
 const execAsync = promisify(exec)
 
