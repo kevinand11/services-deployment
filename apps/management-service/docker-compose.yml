@@ -23,7 +23,8 @@ services:
     restart: unless-stopped
     labels:
       - traefik.enable=true
-      - traefik.http.routers.testy.rule=PathPrefix(`/testy/`)
-      - traefik.http.routers.testy.entrypoints=web
-      - traefik.http.services.testy.loadbalancer.server.port=80
       - traefik.http.middlewares.testy.stripprefix.prefixes=/testy
+      - traefik.http.routers.testy.entrypoints=web
+      - traefik.http.routers.testy.rule=PathPrefix(`/testy/`)
+      - traefik.http.routers.testy.middlewares=testy
+      - traefik.http.services.testy.loadbalancer.server.port=80

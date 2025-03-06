@@ -74,7 +74,9 @@ app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, re
     },
     labels: [
       'traefik.enable=true',
+      `traefik.http.middlewares.${name}.stripprefix.prefixes=${config.path}`,
       `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)`,
+      `traefik.http.routers.${name}.middlewares=${name}`,
       `traefik.http.routers.${name}.entrypoints=web`,
       `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
     ],
@@ -115,6 +117,11 @@ app.put<{ Params: { name: string }; Body: Partial<ServiceConfig> }>(`/services/:
 
     if (ruleIndex !== -1) {
       labels[ruleIndex] = `traefik.http.routers.${name}.rule=PathPrefix(\`${config.path}\`)`
+    }
+
+    const stripprefixIndex = labels.findIndex(l => l.includes('traefik.http.middlewares') && l.includes('.stripprefix'))
+    if (stripprefixIndex !== -1) {
+      labels[stripprefixIndex] = `traefik.http.middlewares.${name}.stripprefix.prefixes=${config.path}`
     }
   }
 
