@@ -36,6 +36,7 @@ export class ServicesStack extends cdk.Stack {
 
     const securityGroup = new ec2.SecurityGroup(this, 'ServiceSecurityGroup', {
       vpc,
+      securityGroupName: 'ServiceSecurityGroup',
       description: 'Security group for services deployment',
       allowAllOutbound: true
     });
@@ -56,7 +57,8 @@ export class ServicesStack extends cdk.Stack {
       'Allow HTTPS traffic'
     );
 
-    const instanceRole = new iam.Role(this, 'ServiceInstanceRole', {
+    const role = new iam.Role(this, 'ServiceInstanceRole', {
+      roleName: 'ServiceInstanceRole',
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
@@ -69,12 +71,16 @@ export class ServicesStack extends cdk.Stack {
       '#!/bin/bash',
       'set -e',
 
-      'dnf update -y',
+      'yum update -y',
+      'yum install -y docker git nodejs',
 
-      'dnf install -y docker docker-compose-plugin git nodejs npm',
+      'usermod -a -G docker ec2-user',
+      'systemctl enable docker.service',
+      'systemctl start docker.service',
 
-      'systemctl enable docker',
-      'systemctl start docker',
+      'wget https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)',
+      'mv docker-compose-$(uname -s)-$(uname -m) /usr/local/bin/docker-compose',
+      'chmod -v +x /usr/local/bin/docker-compose',
 
       'mkdir -p /opt/services/management',
       'cd /opt/services/management',
@@ -84,7 +90,6 @@ export class ServicesStack extends cdk.Stack {
 
       'npm i -g pnpm',
       'pnpm i',
-      'pnpm --filter ./apps/management-service build',
 
       'cat > /etc/systemd/system/services-management.service << EOL',
       '[Unit]',
@@ -94,8 +99,8 @@ export class ServicesStack extends cdk.Stack {
       '',
       '[Service]',
       'Type=simple',
-      'WorkingDirectory=/opt/services/management/apps/management-service/dist',
-      'ExecStart=/usr/bin/node index.js',
+      'WorkingDirectory=/opt/services/management/apps/management-service',
+      'ExecStart=pnpm pm2 start',
       'Restart=always',
       'User=ec2-user',
       '',
@@ -108,14 +113,17 @@ export class ServicesStack extends cdk.Stack {
       'systemctl start services-management'
     );
 
+    const keyPair = ec2.KeyPair.fromKeyPairName(this, 'ServiceKeyPair', this.props.sshKeyName)
+
     const instance = new ec2.Instance(this, 'ServiceInstance', {
       vpc,
+      instanceName: 'ServiceInstance',
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.SMALL),
       machineImage: ec2.MachineImage.latestAmazonLinux2023(),
-      securityGroup: securityGroup,
-      role: instanceRole,
-      keyName: this.props.sshKeyName,
-      userData: userData
+      securityGroup,
+      role,
+      keyPair,
+      userData
     });
 
     /* const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {

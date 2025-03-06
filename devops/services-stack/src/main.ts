@@ -8,6 +8,6 @@ new ServicesStack(app, 'ServicesStack', {
 	sshKeyName: 'services-deployment',
 	env: {
 		region: 'us-east-1',
-		account: '061051242163'
+		account: '533267410846'
 	}
 });
