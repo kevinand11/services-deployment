@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"scripts": {
 		"build:deps": "pnpm exec tsc --noEmit",
-		"start": "pnpm build:deps && tsx src/index.ts",
+		"start": "tsx src/index.ts",
 		"dev": "pnpm build:deps && tsx watch src/index.ts",
 		"pm2": "pm2"
 	},
