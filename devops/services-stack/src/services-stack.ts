@@ -56,6 +56,16 @@ export class ServicesStack extends cdk.Stack {
       ec2.Port.tcp(443),
       'Allow HTTPS traffic'
     );
+    securityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(3000),
+      'Allow Management Services HTTP traffic'
+    );
+    securityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(8080), 
+      'Allow Traefik Dashboard HTTP traffic'
+    );
 
     const role = new iam.Role(this, 'ServiceInstanceRole', {
       roleName: 'ServiceInstanceRole',
