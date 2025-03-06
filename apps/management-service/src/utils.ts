@@ -22,6 +22,7 @@ export const saveComposeFile = async (composeData: unknown) => {
 export const restartServices = async() => {
   await execAsync([
     `cd ${path.dirname(COMPOSE_FILE)}`,
+    `docker-compose pull`,
     `docker-compose build`,
     `docker-compose down --remove-orphans`,
     `docker-compose up -d`
