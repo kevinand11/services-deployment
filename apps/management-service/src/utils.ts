@@ -4,6 +4,7 @@ import * as yaml from 'js-yaml'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import { existsSync } from 'fs'
+import { stdout } from 'process'
 
 const execAsync = promisify(exec)
 
@@ -19,12 +20,19 @@ export const saveComposeFile = async (composeData: unknown) => {
   await fs.writeFile(COMPOSE_FILE, content, 'utf8')
 }
 
-export const restartServices = async(name?: string) => {
-  await execAsync([
+export const restartServices = async() => {
+  const res = await execAsync([
     `cd ${path.dirname(COMPOSE_FILE)}`,
     `docker-compose build`,
-    name ? `docker-compose restart ${name}` : `docker-compose up --build -d`
+    `docker-compose down --remove-orphans`,
+    `docker-compose up -d`
   ].join(' && '))
+  if (res.stdout) {
+    console.log(stdout)
+  }
+  if (res.stderr) {
+    throw new Error(res.stderr)
+  }
 }
 
 export const ensureComposeFileExists = async () => {
