@@ -21,18 +21,12 @@ export const saveComposeFile = async (composeData: unknown) => {
 }
 
 export const restartServices = async() => {
-  const res = await execAsync([
+  await execAsync([
     `cd ${path.dirname(COMPOSE_FILE)}`,
     `docker-compose build`,
     `docker-compose down --remove-orphans`,
     `docker-compose up -d`
   ].join(' && '))
-  if (res.stdout) {
-    console.log(stdout)
-  }
-  if (res.stderr) {
-    throw new Error(res.stderr)
-  }
 }
 
 export const ensureComposeFileExists = async () => {
