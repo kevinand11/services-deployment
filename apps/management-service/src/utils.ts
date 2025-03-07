@@ -32,6 +32,7 @@ export const saveComposeFile = async (composeData: unknown) => {
     await restartServices()
   } catch (err) {
     await fs.writeFile(COMPOSE_FILE, yaml.dump(oldValue), 'utf8')
+    await restartServices().catch(() => {})
     throw err
   }
 }
