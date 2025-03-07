@@ -19,10 +19,10 @@ app.addHook('onRequest', async (req) => {
   }, null, 2))
 })
 
-app.get(`/services`, async (req, res) => {
+async function getServices () {
   const composeData = await loadComposeFile()
-  const services = Object.keys(composeData.services)
-    .filter(name => name !== 'traefik' && name !== 'management')
+  return Object.keys(composeData.services)
+    .filter(name => name !== 'traefik')
     .map(name => {
       const service = composeData.services[name]
       const labels = service.labels || []
@@ -53,8 +53,20 @@ app.get(`/services`, async (req, res) => {
         port,
       }
     })
+}
 
+app.get(`/services`, async (req, res) => {
+  const services = await getServices()
   res.send(services)
+})
+
+app.get<{ Params: { name: string } }>(`/services/:name`, async (req, res) => {
+  const services = await getServices()
+  const service = services.find((s) => s.name === req.params.name)
+  if (!service) {
+    throw createError('ERROR_CODE', 'Service not found', 400)
+  }
+  res.send(service)
 })
 
 app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, res) => {
@@ -106,7 +118,7 @@ app.put<{ Params: { name: string }; Body: Partial<ServiceConfig> }>(`/services/:
   const composeData = await loadComposeFile()
   const service = composeData.services[name]
 
-  if (!service || name === 'traefik' || name === 'management') {
+  if (!service || name === 'traefik') {
     throw createError('ERROR_CODE', 'Service not found or cannot be modified', 400)
   }
 
@@ -156,7 +168,7 @@ app.delete<{ Params: { name: string } }>(`/services/:name`, async (req, res) => 
 
   const composeData = await loadComposeFile()
 
-  if (!composeData.services[name] || name === 'traefik' || name === 'management') {
+  if (!composeData.services[name] || name === 'traefik') {
     throw createError('ERROR_CODE', 'Service not found or cannot be deleted', 400)
   }
 
