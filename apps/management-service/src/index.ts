@@ -7,7 +7,7 @@ const app = fastify()
 
 app.setErrorHandler((err, _, reply) => {
   console.error(err)
-  reply.status(err.statusCode || 500).send({ error: err.message, code: err.code, details: err.stack })
+  reply.status(err.statusCode || 400).send({ error: err.message, code: err.code, details: err.stack })
 })
 
 app.addHook('onRequest', async (req) => {

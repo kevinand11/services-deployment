@@ -2,12 +2,23 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import * as yaml from 'js-yaml'
 import { exec } from 'child_process'
-import { promisify } from 'util'
 import { existsSync } from 'fs'
 
-const execAsync = promisify(exec)
-
 const COMPOSE_FILE = path.join('/tmp/management-service', 'docker-compose.yml')
+
+function run(directory: string, command: string) {
+  return new Promise<string>((resolve, reject) => {
+    exec(command, { cwd: directory }, (error, stdout, stderr) => {
+      if (error) {
+        return reject(new Error(error.message));
+      }
+      if (stderr) {
+        return reject(new Error(stderr));
+      }
+      resolve(stdout.trim());
+    });
+  });
+}
 
 export const loadComposeFile = async () => {
   const content = await fs.readFile(COMPOSE_FILE, 'utf8')
@@ -26,8 +37,7 @@ export const saveComposeFile = async (composeData: unknown) => {
 }
 
 export const restartServices = async() => {
-  await execAsync([
-    `cd ${path.dirname(COMPOSE_FILE)}`,
+  await run(path.dirname(COMPOSE_FILE), [
     `docker-compose pull`,
     `docker-compose build`,
     `docker-compose down --remove-orphans`,
