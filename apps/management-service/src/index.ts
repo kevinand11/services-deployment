@@ -1,13 +1,54 @@
 import fastify from 'fastify'
 import { createError } from '@fastify/error'
 import { ServiceConfig } from './types'
-import { loadComposeFile, saveComposeFile, restartServices, ensureComposeFileExists } from './utils'
+import { restartServices, getServices, getService, saveService } from './utils'
+import { URL } from 'url'
 
 const app = fastify()
 
 function getError (message: string, status: number) {
   const error = createError('FST_ERR_FAILED_ERROR_SERIALIZATION', message, status)
   return new error()
+}
+
+function buildHostAndPathRule (domain?: string, path?: string) {
+  return [
+    domain ? `Host(\`${domain}\`)` : undefined,
+    path ? `Path(\`${path}\`)` : undefined,
+  ].filter(Boolean).join(' && ') || undefined
+}
+
+function cleanPath (path: string | undefined) {
+  if (!path || typeof path !== 'string') {
+    return undefined
+  }
+  if (!path.startsWith('/')) {
+    path = `/${path}`
+  }
+  if (!path.endsWith('/')) {
+    path = `${path}/`
+  }
+  return path
+}
+
+function cleanDomain (domain: string | undefined) {
+  if (!domain || typeof domain !== 'string') {
+    return undefined
+  }
+  if (!URL.canParse(`http://${domain}`)) {
+    throw getError('invalid domain value passed in', 400)
+  }
+  return domain
+}
+
+function cleanPort<T extends number | undefined> (port: T) {
+  if (!port || typeof port !== 'number') {
+    return undefined as T
+  }
+  if (port > 0 && port < 65535) {
+    return port
+  }
+  throw getError('port must be in a valid range of 0>port<65535', 400)
 }
 
 app.setErrorHandler((err, _, reply) => {
@@ -24,50 +65,13 @@ app.addHook('onRequest', async (req) => {
   }, null, 2))
 })
 
-async function getServices () {
-  const composeData = await loadComposeFile()
-  return Object.keys(composeData.services)
-    .filter(name => name !== 'traefik')
-    .map(name => {
-      const service = composeData.services[name]
-      const labels = service.labels || []
-
-      const pathRule = labels.find((l: string) => l.includes('traefik.http.routers') && l.includes('.rule='))
-      const path = pathRule ?
-        pathRule.match(/PathPrefix\(`([^`]+)`\)/) ?
-          pathRule.match(/PathPrefix\(`([^`]+)`\)/)[1] :
-          '/' :
-        '/'
-
-      const domain = pathRule ?
-        pathRule.match(/Host\(`([^`]+)`\)/) ?
-          pathRule.match(/Host\(`([^`]+)`\)/)[1] :
-          '/' :
-        '/'
-
-      const portLabel = labels.find((l: string) => l.includes('traefik.http.services') && l.includes('.loadbalancer.server.port='))
-      const port = portLabel ?
-        parseInt(portLabel.split('=')[1]) :
-        (service.environment?.PORT ? parseInt(service.environment.PORT) : null)
-
-      return {
-        name,
-        image: service.image,
-        path,
-        domain,
-        port,
-      }
-    })
-}
-
 app.get(`/services`, async (req, res) => {
   const services = await getServices()
   res.send(services)
 })
 
 app.get<{ Params: { name: string } }>(`/services/:name`, async (req, res) => {
-  const services = await getServices()
-  const service = services.find((s) => s.name === req.params.name)
+  const service = await getService(req.params.name)
   if (!service) {
     throw getError('Service not found', 404)
   }
@@ -76,18 +80,20 @@ app.get<{ Params: { name: string } }>(`/services/:name`, async (req, res) => {
 
 app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, res) => {
   const { name, ...config } = req.body
+  config.port = cleanPort(config.port)
+  config.domain = cleanDomain(config.domain)
+  config.path = cleanPath(config.path)
 
-  if (!name || !config.image || !config.port || !config.domain) {
-    throw getError('Missing required fields', 400)
+  if (!name || !config.image || !config.port) {
+    throw getError('Missing required fields: name, image, port', 404)
   }
 
-  const composeData = await loadComposeFile()
-
-  if (composeData.services[name]) {
+  const existing = await getService(name)
+  if (existing) {
     throw getError('Service with this name already exists', 400)
   }
 
-  composeData.services[name] = {
+  const service = await saveService(name, {
     image: config.image,
     container_name: name,
     restart: 'unless-stopped',
@@ -96,34 +102,35 @@ app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, re
       PORT: config.port.toString(),
       ...(config.env || {})
     },
-    labels: [
-      'traefik.enable=true',
-      `traefik.http.middlewares.${name}-redirect-to-https.redirectscheme.scheme=https`,
-      //`traefik.http.middlewares.${name}.stripprefix.prefixes=${config.domain}`,
-      `traefik.http.routers.${name}.rule=Host(\`${config.domain}\`)`,
-      `traefik.http.routers.${name}.middlewares=${name}-redirect-to-https`,
-      //`traefik.http.routers.${name}.middlewares=${name}`,
-      `traefik.http.routers.${name}.entrypoints=websecure`,
-      `traefik.http.routers.${name}.tls=true`,
-      `traefik.http.routers.${name}.tls.certresolver=myresolver`,
-      `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
-    ],
-  }
-
-  await saveComposeFile(composeData)
-
-  res.send({ name, composeData })
+    labels: {
+      ['traefik.enable']: 'true',
+      [`traefik.http.middlewares.${name}-redirect-to-https.redirectscheme.scheme`]: 'https',
+      [`traefik.http.middlewares.${name}-strip-prefix.stripprefix.prefixes`]: config.path,
+      [`traefik.http.routers.${name}.middlewares`]: [`${name}-redirect-to-https`, config.path ? `${name}-strip-prefix` : undefined].filter(Boolean).join(', '),
+      [`traefik.http.routers.${name}.tls`]: 'true',
+      [`traefik.http.routers.${name}.tls.certresolver`]: 'myresolver',
+      [`traefik.http.routers.${name}.rule`]: buildHostAndPathRule(config.domain, config.path),
+      [`traefik.http.services.${name}.loadbalancer.server.port`]: `${config.port}`,
+      [`metadata.domain`]: config.domain,
+      [`metadata.path`]: config.path,
+      [`metadata.port`]: `${config.port}`,
+      [`metadata.name`]: name,
+    }
+  })
+  res.send(service)
 })
 
 app.put<{ Params: { name: string }; Body: Partial<ServiceConfig> }>(`/services/:name`, async (req, res) => {
   const { name } = req.params
   const config = req.body
+  config.port = cleanPort(config.port)
+  config.domain = cleanDomain(config.domain)
+  config.path = cleanPath(config.path)
 
-  const composeData = await loadComposeFile()
-  const service = composeData.services[name]
+  const service = await getService(name)
 
-  if (!service || name === 'traefik') {
-    throw getError('Service not found or cannot be modified', 400)
+  if (!service) {
+    throw getError('Service not found', 404)
   }
 
   if (config.image) {
@@ -137,48 +144,38 @@ app.put<{ Params: { name: string }; Body: Partial<ServiceConfig> }>(`/services/:
     }
   }
 
-  const labels = service.labels as string[]
-
-  if (config.domain) {
-    const ruleIndex = labels.findIndex(l => l.includes('traefik.http.routers') && l.includes('.rule='))
-
-    if (ruleIndex !== -1) {
-      labels[ruleIndex] = `traefik.http.routers.${name}.rule=Host(\`${config.domain}\`)`
-    }
-
-    /* const stripprefixIndex = labels.findIndex(l => l.includes('traefik.http.middlewares') && l.includes('.stripprefix'))
-    if (stripprefixIndex !== -1) {
-      labels[stripprefixIndex] = `traefik.http.middlewares.${name}.stripprefix.prefixes=${config.path}`
-    } */
-  }
-
   if (config.port) {
-    service.environment.PORT = config.port.toString()
-    const portIndex = labels.findIndex(l => l.includes('traefik.http.services') && l.includes('.loadbalancer.server.port='))
-
-    if (portIndex !== -1) {
-      labels[portIndex] = `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
-    }
+    service.environment.PORT = `${config.port}`
+    service.labels[`metadata.port`] = `${config.port}`
+    service.labels[`traefik.http.services.${name}.loadbalancer.server.port`] = `${config.port}`
   }
 
-  await saveComposeFile(composeData)
+  const domain = config.domain ?? service.labels[`metadata.domain`]
+  const path = config.path ?? service.labels[`metadata.path`]
 
-  res.send({ name, updated: true })
+  service.labels[`metadata.domain`] = domain
+  service.labels[`metadata.path`] = path
+  service.labels[`traefik.http.routers.${name}.rule`] = buildHostAndPathRule(domain, path)
+
+  if (path) {
+    service.labels[`traefik.http.routers.${name}.middlewares`] = `${name}-redirect-to-https, ${name}-strip-prefix`
+    service.labels[`traefik.http.middlewares.${name}-strip-prefix.stripprefix.prefixes`] = path
+  } else {
+    service.labels[`traefik.http.routers.${name}.middlewares`] = `${name}-redirect-to-https`
+  }
+
+  const updatedService =  await saveService(req.params.name, service)
+  res.send(updatedService)
 })
 
 app.delete<{ Params: { name: string } }>(`/services/:name`, async (req, res) => {
   const { name } = req.params
+  const service = await getService(name)
 
-  const composeData = await loadComposeFile()
-
-  if (!composeData.services[name] || name === 'traefik') {
-    throw getError('Service not found or cannot be deleted', 400)
+  if (!service) {
+    throw getError('Service not found', 404)
   }
-
-  delete composeData.services[name]
-
-  await saveComposeFile(composeData)
-
+  await saveService(name, undefined)
   res.send(true)
 })
 
@@ -188,8 +185,7 @@ app.post(`/reload`, async (req, res) => {
 })
 
 const port = Number(process.env.PORT) || 3000
-ensureComposeFileExists().then(async () => {
-  await restartServices()
+restartServices().then(async () => {
   await app.listen({ port, host: '0.0.0.0' })
   console.log(`Management service running on port: ${port}`)
 })
