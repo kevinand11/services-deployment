@@ -2,9 +2,8 @@
 	"name": "management-service",
 	"version": "1.0.0",
 	"scripts": {
-		"build:deps": "pnpm exec tsc --noEmit",
 		"start": "tsx src/index.ts",
-		"dev": "pnpm build:deps && tsx watch src/index.ts",
+		"dev": "tsx watch src/index.ts",
 		"pm2": "pm2"
 	},
 	"private": true,
