@@ -48,5 +48,9 @@
         ]
       }
     ]
+  },
+  "hosted-zone:account=533267410846:domainName=codygo.ai:region=us-east-1": {
+    "Id": "/hostedzone/Z0085955BZB53CGSHYDZ",
+    "Name": "codygo.ai."
   }
 }

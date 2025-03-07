@@ -2,13 +2,13 @@ import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
-/* import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as targets from 'aws-cdk-lib/aws-route53-targets'; */
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as targets from 'aws-cdk-lib/aws-route53-targets';
 
 interface ServicesStackProps extends cdk.StackProps {
   githubRepoUrl: string;
   githubRepoBranch?: string;
-  // domainName: string;
+  hostedZoneDomainName: string;
   sshKeyName: string;
 }
 
@@ -17,6 +17,8 @@ export class ServicesStack extends cdk.Stack {
     super(scope, id, props);
 
     const { instance } = this.createInstance()
+
+    this.createDomains(instance)
 
     new cdk.CfnOutput(this, 'ServiceInstanceId', {
       value: instance.instanceId,
@@ -117,16 +119,36 @@ export class ServicesStack extends cdk.Stack {
       userData
     });
 
-    /* const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
-      domainName: this.props.domainName
+    return { instance }
+  }
+
+  createDomains (instance: ec2.Instance) {
+    const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
+      domainName: this.props.hostedZoneDomainName
     });
 
     new route53.ARecord(this, 'ServiceDNSRecord', {
       zone: hostedZone,
-      recordName: `services.${props.domainName}`,
+      recordName: `services.${hostedZone.zoneName}`,
       target: route53.RecordTarget.fromIpAddresses(instance.instancePublicIp)
-    }); */
+    });
 
-    return { instance }
+    new route53.ARecord(this, 'ChatDNSRecord', {
+      zone: hostedZone,
+      recordName: `chat.${hostedZone.zoneName}`,
+      target: route53.RecordTarget.fromIpAddresses(instance.instancePublicIp)
+    });
+
+    new route53.ARecord(this, 'ApiDNSRecord', {
+      zone: hostedZone,
+      recordName: `api.${hostedZone.zoneName}`,
+      target: route53.RecordTarget.fromIpAddresses(instance.instancePublicIp)
+    });
+
+    new route53.ARecord(this, 'WidgetDNSRecord', {
+      zone: hostedZone,
+      recordName: `widget.${hostedZone.zoneName}`,
+      target: route53.RecordTarget.fromIpAddresses(instance.instancePublicIp)
+    });
   }
 }
