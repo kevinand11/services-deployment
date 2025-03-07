@@ -5,6 +5,11 @@ import { loadComposeFile, saveComposeFile, restartServices, ensureComposeFileExi
 
 const app = fastify()
 
+function getError (message: string, status: number) {
+  const error = createError('FST_ERR_FAILED_ERROR_SERIALIZATION', message, status)
+  return new error()
+}
+
 app.setErrorHandler((err, _, reply) => {
   console.error(err)
   reply.status(err.statusCode || 400).send({ error: err.message, code: err.code, details: err.stack })
@@ -64,7 +69,7 @@ app.get<{ Params: { name: string } }>(`/services/:name`, async (req, res) => {
   const services = await getServices()
   const service = services.find((s) => s.name === req.params.name)
   if (!service) {
-    throw createError('ERROR_CODE', 'Service not found', 404)
+    throw getError('Service not found', 404)
   }
   res.send(service)
 })
@@ -73,13 +78,13 @@ app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, re
   const { name, ...config } = req.body
 
   if (!name || !config.image || !config.port || !config.domain) {
-    throw createError('ERROR_CODE', 'Missing required fields', 400)
+    throw getError('Missing required fields', 400)
   }
 
   const composeData = await loadComposeFile()
 
   if (composeData.services[name]) {
-    throw createError('ERROR_CODE', 'Service with this name already exists', 400)
+    throw getError('Service with this name already exists', 400)
   }
 
   composeData.services[name] = {
@@ -118,7 +123,7 @@ app.put<{ Params: { name: string }; Body: Partial<ServiceConfig> }>(`/services/:
   const service = composeData.services[name]
 
   if (!service || name === 'traefik') {
-    throw createError('ERROR_CODE', 'Service not found or cannot be modified', 400)
+    throw getError('Service not found or cannot be modified', 400)
   }
 
   if (config.image) {
@@ -167,7 +172,7 @@ app.delete<{ Params: { name: string } }>(`/services/:name`, async (req, res) => 
   const composeData = await loadComposeFile()
 
   if (!composeData.services[name] || name === 'traefik') {
-    throw createError('ERROR_CODE', 'Service not found or cannot be deleted', 400)
+    throw getError('Service not found or cannot be deleted', 400)
   }
 
   delete composeData.services[name]
