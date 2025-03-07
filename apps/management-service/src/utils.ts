@@ -15,8 +15,14 @@ export const loadComposeFile = async () => {
 }
 
 export const saveComposeFile = async (composeData: unknown) => {
-  const content = yaml.dump(composeData)
-  await fs.writeFile(COMPOSE_FILE, content, 'utf8')
+  const oldValue = await loadComposeFile()
+  await fs.writeFile(COMPOSE_FILE, yaml.dump(composeData), 'utf8')
+  try {
+    await restartServices()
+  } catch (err) {
+    await fs.writeFile(COMPOSE_FILE, yaml.dump(oldValue), 'utf8')
+    throw err
+  }
 }
 
 export const restartServices = async() => {

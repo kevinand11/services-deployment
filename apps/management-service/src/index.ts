@@ -64,7 +64,7 @@ app.get<{ Params: { name: string } }>(`/services/:name`, async (req, res) => {
   const services = await getServices()
   const service = services.find((s) => s.name === req.params.name)
   if (!service) {
-    throw createError('ERROR_CODE', 'Service not found', 400)
+    throw createError('ERROR_CODE', 'Service not found', 404)
   }
   res.send(service)
 })
@@ -106,7 +106,6 @@ app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, re
   }
 
   await saveComposeFile(composeData)
-  await restartServices()
 
   res.send({ name, composeData })
 })
@@ -158,7 +157,6 @@ app.put<{ Params: { name: string }; Body: Partial<ServiceConfig> }>(`/services/:
   }
 
   await saveComposeFile(composeData)
-  await restartServices()
 
   res.send({ name, updated: true })
 })
@@ -175,7 +173,6 @@ app.delete<{ Params: { name: string } }>(`/services/:name`, async (req, res) => 
   delete composeData.services[name]
 
   await saveComposeFile(composeData)
-  await restartServices()
 
   res.send(true)
 })
