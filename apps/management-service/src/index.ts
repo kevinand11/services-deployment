@@ -81,10 +81,14 @@ app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, re
     },
     labels: [
       'traefik.enable=true',
+      `traefik.http.middlewares.${name}-redirect-to-https.redirectscheme.scheme=https`,
       //`traefik.http.middlewares.${name}.stripprefix.prefixes=${config.domain}`,
       `traefik.http.routers.${name}.rule=Host(\`${config.domain}\`)`,
+      `traefik.http.routers.whoami.middlewares=${name}-redirect-to-https`,
       //`traefik.http.routers.${name}.middlewares=${name}`,
-      `traefik.http.routers.${name}.entrypoints=web`,
+      `traefik.http.routers.${name}.entrypoints=websecure`,
+      `traefik.http.routers.${name}.tls=true`,
+      `traefik.http.routers.${name}.tls.certresolver=myresolver`,
       `traefik.http.services.${name}.loadbalancer.server.port=${config.port}`
     ],
   }
