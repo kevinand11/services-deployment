@@ -46,7 +46,6 @@ type ServiceLabelKeys =
   | `metadata.domain`
   | `metadata.path`
   | `metadata.port`
-  | `metadata.name`
 
 export interface ServiceLabels extends Record<ServiceLabelKeys, string | undefined> { }
 

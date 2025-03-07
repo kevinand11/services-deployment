@@ -114,7 +114,6 @@ app.post<{ Body: ServiceConfig & { name: string } }>(`/services`, async (req, re
       [`metadata.domain`]: config.domain,
       [`metadata.path`]: config.path,
       [`metadata.port`]: `${config.port}`,
-      [`metadata.name`]: name,
     }
   })
   res.send(service)

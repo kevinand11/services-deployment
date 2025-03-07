@@ -82,7 +82,7 @@ export async function getServices () {
 
 export async function getService (name: string) {
   const services = await getServices()
-  return services.find((s) => s.labels['metadata.name'] === name)
+  return services.find((s) => s.container_name === name)
 }
 
 export async function saveService (name: string, service: ServiceDefinition | undefined) {
