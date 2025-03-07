@@ -100,6 +100,10 @@ export class ServicesStack extends cdk.Stack {
       `git clone ${this.props.githubRepoUrl} .`,
       `git checkout ${this.props.githubRepoBranch || 'main'}`,
 
+      'mkdir -p /letsencrypt',
+      'touch /letsencrypt/acme.json',
+      'chmod 600 /letsencrypt/acme.json',
+
       'npm i -g pnpm',
       'pnpm i',
       'cd ./apps/management-service',
