@@ -132,23 +132,5 @@ export class ServicesStack extends cdk.Stack {
       recordName: `services.${hostedZone.zoneName}`,
       target: route53.RecordTarget.fromIpAddresses(instance.instancePublicIp)
     });
-
-    new route53.ARecord(this, 'ChatDNSRecord', {
-      zone: hostedZone,
-      recordName: `chat.${hostedZone.zoneName}`,
-      target: route53.RecordTarget.fromIpAddresses(instance.instancePublicIp)
-    });
-
-    new route53.ARecord(this, 'ApiDNSRecord', {
-      zone: hostedZone,
-      recordName: `api.${hostedZone.zoneName}`,
-      target: route53.RecordTarget.fromIpAddresses(instance.instancePublicIp)
-    });
-
-    new route53.ARecord(this, 'WidgetDNSRecord', {
-      zone: hostedZone,
-      recordName: `widget.${hostedZone.zoneName}`,
-      target: route53.RecordTarget.fromIpAddresses(instance.instancePublicIp)
-    });
   }
 }
