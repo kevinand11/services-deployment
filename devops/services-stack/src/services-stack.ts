@@ -63,7 +63,7 @@ export class ServicesStack extends cdk.Stack {
     );
     securityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(8080), 
+      ec2.Port.tcp(8080),
       'Allow Traefik Dashboard HTTP traffic'
     );
 
@@ -100,27 +100,8 @@ export class ServicesStack extends cdk.Stack {
 
       'npm i -g pnpm',
       'pnpm i',
-
-      'cat > /etc/systemd/system/services-management.service << EOL',
-      '[Unit]',
-      'Description=Services Management Service',
-      'After=docker.service',
-      'Requires=docker.service',
-      '',
-      '[Service]',
-      'Type=simple',
-      'WorkingDirectory=/opt/services/management/apps/management-service',
-      'ExecStart=pnpm pm2 start',
-      'Restart=always',
-      'User=ec2-user',
-      '',
-      '[Install]',
-      'WantedBy=multi-user.target',
-      'EOL',
-
-      'systemctl daemon-reload',
-      'systemctl enable services-management',
-      'systemctl start services-management'
+      'cd ./apps/management-service',
+      'pnpm pm2 start',
     );
 
     const keyPair = ec2.KeyPair.fromKeyPairName(this, 'ServiceKeyPair', this.props.sshKeyName)
