@@ -171,6 +171,7 @@ app.post(`/reload`, async (req, res) => {
 
 const port = Number(process.env.PORT) || 3000
 ensureComposeFileExists().then(async () => {
+  await restartServices()
   await app.listen({ port, host: '0.0.0.0' })
   console.log(`Management service running on port: ${port}`)
 })
