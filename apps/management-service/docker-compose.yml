@@ -10,9 +10,10 @@ services:
       - '--entrypoints.web.address=:80'
       - '--entrypoints.websecure.address=:443'
       - '--api.insecure'
-      - '--certificatesresolvers.myresolver.acme.tlschallenge=true'
       - '--certificatesresolvers.myresolver.acme.email=kevin.ifesinachi@codygo.com'
       - '--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json'
+      - '--certificatesresolvers.myresolver.acme.caServer=https://acme-v02.api.letsencrypt.org/directory'
+      - '--certificatesresolvers.myresolver.acme.httpChallenge.entryPoint=web'
     ports:
       - '80:80'
       - '443:443'
