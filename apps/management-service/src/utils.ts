@@ -1,21 +1,34 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import * as yaml from 'js-yaml'
-import { exec } from 'child_process'
+import { spawn } from 'child_process'
 import { existsSync } from 'fs'
 
 const COMPOSE_FILE = path.join('/tmp/management-service', 'docker-compose.yml')
 
 function run(directory: string, command: string) {
-  return new Promise<string>((resolve, reject) => {
-    exec(command, { cwd: directory }, (error, stdout, stderr) => {
-      if (error) {
-        return reject(new Error(error.message));
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, { cwd: directory, shell: true });
+
+    let output = '';
+    let errorOutput = '';
+
+    child.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
+    child.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+    });
+
+    child.on('error', (err) => reject(err));
+
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Process exited with code ${code}: ${errorOutput.trim()}`));
+      } else {
+        resolve(output.trim());
       }
-      if (stderr) {
-        return reject(new Error(stderr));
-      }
-      resolve(stdout.trim());
     });
   });
 }
